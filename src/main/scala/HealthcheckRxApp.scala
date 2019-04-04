@@ -6,8 +6,7 @@ import scala.concurrent.ExecutionContext
 object HealthcheckRxApp extends App {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
-
-  // TODO: Define some preliminary tests that we need to
   val healthcheckRx = HealthcheckRx(List.empty)
 
+  healthcheckRx.returnHealthObject()
 }

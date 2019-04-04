@@ -1,23 +1,32 @@
 import scala.concurrent.ExecutionContext
+import akka.actor.{Actor, ActorSystem, Props}
 
-import akka.actor.Actor
+import scala.concurrent.duration._
+import akka.util.Timeout
+import akka.pattern.ask
 
-import scala.collection.mutable.Map
+import scala.util.{Failure, Success}
 
-// TODO: Define how we want to access the actor and update its state
-class HealthcheckRx(healthchecks: List[HealthcheckItem]) {
+//import scala.collection.mutable.Map
 
+class HealthcheckRx(healthchecks: List[HealthcheckItem], requestTimeout: Int = 2)(implicit ec: ExecutionContext) {
 
-  // Define the initial healthcheck state
-  val initialHealthState = healthchecks map (hc => HealthResponse(hc.key, YELLOW, "Initializing health"))
+  private val system = ActorSystem()
+  private implicit val timeout = Timeout(requestTimeout.seconds)
+  private val initialHealthState = (healthchecks map
+    (hc => (hc.key, HealthResponse(hc.key, YELLOW, "Initializing health")))).toMap
 
   // Instantiate the actor -- how to initialize the state (start off yellow, initializing)
-  // TODO: Figure out how to get an actor ref
-  val healthcheckActor = new HealthcheckActor
+  private val healthcheckActorRef = system.actorOf(Props(new HealthcheckActor(initialHealthState)))
 
   // TODO: Figure out how to send an ask to the actor
-  def returnHealthObject(): [List[HealthResponse]] = {
-    healthcheckActor.
+  def returnHealthObject(): Unit = {
+    healthcheckActorRef ? HealthAsk onComplete {
+      case Success(healthList) =>
+        println(s"we got a success: $healthList")
+      case Failure(ex) =>
+        println(s"${ex.getMessage}")
+    }
   }
 
 }
@@ -30,16 +39,19 @@ object HealthcheckRx {
   }
 }
 
-class HealthcheckActor extends Actor {
-  private var healthStatusState: Map[String, HealthResponse] = Map.empty[String, HealthResponse]
+class HealthcheckActor(initialHealthState: Map[String, HealthResponse]) extends Actor {
+
+  // Create the mutable state inside of the actor
+  private var healthStatusState: Map[String, HealthResponse] = initialHealthState
+
   override def receive: Receive = {
-    case healthStatus: HealthResponse =>
-      healthStatusState update (healthStatus.name, healthStatus)
-    case healthAsk: HealthAsk =>
+    case HealthResponse =>
+      //healthStatusState update (healthStatus.name, healthStatus)
+    case HealthAsk =>
       // Send back the health status state to the asker
       sender() ! healthStatusState
-
-    case _ => println(s"You didn't send a health response to the health actor")
+    case _ =>
+      println(s"HealthAsk and HealthResponse only to the health actor")
   }
 }
 
