@@ -22,16 +22,17 @@ class HealthcheckRx(healthchecks: List[HealthcheckItem], requestTimeout: Int = 2
   private val initialHealthState = (healthchecks map
     (hc => (hc.key, HealthResponse(hc.key, YELLOW, "Initializing health")))).toMap
 
+  println(s"What's my initial health state? ${initialHealthState}")
+
   // Instantiate the actor -- how to initialize the state (start off yellow, initializing)
   private val healthcheckActorRef = system.actorOf(Props(new HealthcheckActor(initialHealthState)))
 
   def getSystemHealthStatus: Future[SystemHealthStatus] = {
-    healthcheckActorRef ? HealthAsk match {
-      case m: SystemHealthStatus => Future(m)
-      case _ => Future(Map.empty[String, HealthResponse])
+    (healthcheckActorRef ? HealthAsk).map {
+      case m: SystemHealthStatus => m
+      case _ => Map.empty[String, HealthResponse] // Figure out how to handle this (it covers errors right now)
     }
   }
-
 }
 
 // Companion object for HealthcheckRx class, which will be a wrapper for the actor that we use
