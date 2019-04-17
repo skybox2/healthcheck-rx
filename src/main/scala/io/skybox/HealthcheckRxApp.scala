@@ -11,8 +11,9 @@ import scala.util.{Failure, Success}
   */
 object HealthcheckRxApp extends App {
 
-  implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val system: ActorSystem = ActorSystem()
+  implicit val ec: ExecutionContext = system.dispatcher
+
   val healthcheckRx = HealthcheckRx(List(new RandomHealthcheckItem))
 
   healthcheckRx.getSystemHealthStatus onComplete {

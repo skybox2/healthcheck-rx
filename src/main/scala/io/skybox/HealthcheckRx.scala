@@ -10,7 +10,7 @@ import akka.pattern.ask
 import domain._
 
 // Should re-use the actor system from your normal application becauase it's not lightweight
-class HealthcheckRx(healthchecks: List[HealthcheckItem], requestTimeout: Int = 2)
+class HealthcheckRx(healthchecks: List[HealthcheckItem], requestTimeout: Int = 2, timerMillis: Int = 60)
                    (implicit ec: ExecutionContext, system: ActorSystem) {
 
   // Improve the readability of the API
@@ -22,16 +22,24 @@ class HealthcheckRx(healthchecks: List[HealthcheckItem], requestTimeout: Int = 2
   private val initialHealthState = (healthchecks map
     (hc => (hc.key, HealthResponse(hc.key, YELLOW, "Initializing health")))).toMap
 
-  println(s"What's my initial health state? ${initialHealthState}")
+  println(s"Initial health state for the actor $initialHealthState")
 
   // Instantiate the actor -- how to initialize the state (start off yellow, initializing)
   private val healthcheckActorRef = system.actorOf(Props(new HealthcheckActor(initialHealthState)))
+
+  // TODO: Instantiate a scheduler here, and pass it the actor ref
+  private val scheduler = HealthcheckScheduler(healthchecks, healthcheckActorRef)
 
   def getSystemHealthStatus: Future[SystemHealthStatus] = {
     (healthcheckActorRef ? HealthAsk).map {
       case m: SystemHealthStatus => m
       case _ => Map.empty[String, HealthResponse] // Figure out how to handle this (it covers errors right now)
     }
+  }
+
+  // TODO: Set up a method for shutting down the scheduler and actor
+  def shutdownHealthSystem: Future[Unit] = {
+    Future.unit
   }
 }
 
@@ -50,13 +58,12 @@ class HealthcheckActor(initialHealthState: Map[String, HealthResponse]) extends 
   // Create the mutable state inside of the actor
   private var healthStatusStates: Map[String, HealthResponse] = initialHealthState
 
+  // Thread safe so no worries about contention over the health status map
   override def receive: Receive = {
     case hr: HealthResponse =>
-
-      // TODO: We need to redefine the map (reassign the var, keep as an immutable map)
-      // This is thread safe so it's ok
-      // healthStatusState update (healthStatus.name, healthStatus)
-      healthStatusStates = healthStatusStates + ((hr.name, hr)) // Have to pass a tuple to the add method
+      // TODO: Log any health state changes here
+      println(s"Received a new health check update: ${hr}")
+      healthStatusStates = healthStatusStates + ((hr.name, hr)) // Update the map based on the key
     case HealthAsk =>
       // Send back the health status state to the asker
       sender() ! healthStatusStates
