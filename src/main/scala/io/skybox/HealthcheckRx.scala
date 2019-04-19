@@ -38,7 +38,8 @@ class HealthcheckRx(healthchecks: List[HealthcheckItem], requestTimeout: Int = 2
 
   // Shutdown the healthcheck actor and then shutdown the scheduler
   def shutdownHealthSystem: Future[Boolean] = {
-    (healthcheckActorRef ? PoisonPill) flatMap (_ => scheduler.shutdownScheduler )
+    Future(healthcheckActorRef ! PoisonPill) flatMap
+      ( _ => scheduler.shutdownScheduler )
   }
 }
 

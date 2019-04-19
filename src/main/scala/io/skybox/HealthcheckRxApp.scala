@@ -22,4 +22,6 @@ object HealthcheckRxApp extends App {
     case Failure(t) => println(s"Error returned ${t.getMessage}")
   }
   println(s"Shutdown?: ${Await.result(healthcheckRx.shutdownHealthSystem, Duration.Inf)}")
+
+  system.terminate
 }
