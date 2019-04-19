@@ -3,6 +3,7 @@ package io.skybox
 import akka.actor.ActorSystem
 import io.skybox.samples.RandomHealthcheckItem
 
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext}
 import scala.util.{Failure, Success}
 
@@ -20,5 +21,5 @@ object HealthcheckRxApp extends App {
     case Success(hs) => println(hs.toString)
     case Failure(t) => println(s"Error returned ${t.getMessage}")
   }
-
+  println(s"Shutdown?: ${Await.result(healthcheckRx.shutdownHealthSystem, Duration.Inf)}")
 }

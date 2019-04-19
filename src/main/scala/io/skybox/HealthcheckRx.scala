@@ -1,12 +1,11 @@
 package io.skybox
 
 import scala.concurrent.{ExecutionContext, Future}
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.{Actor, ActorSystem, PoisonPill, Props}
 
 import scala.concurrent.duration._
 import akka.util.Timeout
 import akka.pattern.ask
-
 import domain._
 
 // Should re-use the actor system from your normal application becauase it's not lightweight
@@ -37,9 +36,9 @@ class HealthcheckRx(healthchecks: List[HealthcheckItem], requestTimeout: Int = 2
     }
   }
 
-  // TODO: Set up a method for shutting down the scheduler and actor
-  def shutdownHealthSystem: Future[Unit] = {
-    Future.unit
+  // Shutdown the healthcheck actor and then shutdown the scheduler
+  def shutdownHealthSystem: Future[Boolean] = {
+    (healthcheckActorRef ? PoisonPill) flatMap (_ => scheduler.shutdownScheduler )
   }
 }
 
